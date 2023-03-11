@@ -2,7 +2,7 @@
 
 close all; clear;
 %choose the path to the videos (you'll be able to choose one with the GUI)
-base_path = 'E:\DataSets\CFTracker\OTB100';
+base_path = 'E:\DataSets\CFTracker\People';
 
 % CN参数
 params.CN.padding = 1.0; % 目标周围的额外区域
@@ -35,24 +35,39 @@ params.fDSST.scale_step = 1.02; % 比例增量系数（在文件中用"a"表示�
 params.fDSST.scale_model_max_area = 512; % 尺度样本的最大大小
 params.fDSST.s_num_compressed_dim = 'MAX'; % 压缩尺度特征维度数
 
-params.visualization = 1;
-params.draw_apce = 1;
+params.visualization = 0;
+params.draw_apce = 0;
 
 % 加载视频序列
-video = choose_video(base_path);
-if isempty(video), return, end %user cancelled
-[img_files, pos, target_sz, ground_truth, video_path] = load_video_info(base_path, video);
+dirs = dir(base_path);
+videos = {dirs.name};
+videos(strcmp('.', videos) | strcmp('..', videos) | ...
+            strcmp('anno', videos) | ~[dirs.isdir]) = [];
 
-params.init_pos = floor(pos); %初始位置[y,x]，左上角
-params.wsize = floor(target_sz); % 目标大小[h,w]
-params.img_files = img_files; %视频序列的集合
-params.video_path = video_path; %视频序列根路径
+videos(strcmpi('Jogging', videos)) = [];
+videos(end + 1:end + 2) = {'Jogging.1', 'Jogging.2'};
 
-results = tracker(params);
-positions = results.positions;
-boxes = results.boxes;
-fps = results.fps;
+all_DP = zeros(numel(videos), 1);
+all_OP = zeros(numel(videos), 1);
+all_CLE = zeros(numel(videos), 1);
+all_fps = zeros(numel(videos),1);
 
-% calculate precisions
-[DP, OP, CLE] = compute_performance_measures(boxes, ground_truth);
-fprintf('%12s - DP (20px):% 1.3f, OP:%1.3f, CLE (pixcel):%.5g, fFPS:% 4.2f\n', video, DP, OP, CLE, fps);
+for k = 1:numel(videos)
+    [img_files, pos, target_sz, ground_truth, video_path] = load_video_info(base_path, videos{k});
+    
+    params.init_pos = floor(pos); %初始位置[y,x]，左上角
+    params.wsize = floor(target_sz); % 目标大小[h,w]
+    params.img_files = img_files; %视频序列的集合
+    params.video_path = video_path; %视频序列根路径
+    
+    results = tracker(params);
+    % positions = results.positions;
+    boxes = results.boxes;
+    all_fps(k) = results.fps;
+    
+    % calculate precisions
+    [all_DP(k), all_OP(k), all_CLE(k)] = compute_performance_measures(boxes, ground_truth);
+    fprintf('%12s - DP (20px):% 1.3f, OP:%1.3f, CLE (pixcel):%.5g, fFPS:% 4.2f\n', videos{k}, all_DP(k), all_OP(k), all_CLE(k), all_fps(k));
+end
+
+fprintf('Average - DP (20px):% 1.3f, OP:%1.3f, CLE (pixcel):%.5g, fFPS:% 4.2f\n', mean(all_DP), mean(all_OP), mean(all_CLE), mean(all_fps));

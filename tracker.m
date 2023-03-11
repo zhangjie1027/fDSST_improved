@@ -36,6 +36,7 @@ function results = tracker(params)
     pos = floor(params.init_pos);
     target_sz = floor(params.wsize);
     visualization = params.visualization; %可视化
+    draw_apce = params.draw_apce;
 
     num_frames = numel(img_files); % 帧数
     
@@ -124,6 +125,9 @@ function results = tracker(params)
     % 计算精度
     positions = zeros(numel(img_files), 4);
     boxes = zeros(numel(img_files), 4);
+    apces = zeros(numel(img_files), 3);
+    psrs = zeros(numel(img_files), 3);
+    max_responses = zeros(numel(img_files), 3);
     % 初始化投影矩阵
     CN_projection_matrix = [];
     projection_matrix = [];
@@ -160,8 +164,23 @@ function results = tracker(params)
             end
             fDSST_response = ifft2(fDSST_responsef, 'symmetric');
             
-            response = 0.5* CN_response + 0.5 * fDSST_response;
+            apces(frame, 1) = APCE(CN_response);
+            apces(frame, 2) = APCE(fDSST_response);
+
+            Fusion_factor = apces(frame, 1) / (apces(frame, 1) + apces(frame, 2));
+            response = Fusion_factor* CN_response + (1-Fusion_factor) * fDSST_response;
             
+            
+            apces(frame, 3) = APCE(response);
+
+            psrs(frame, 1) = PSR(CN_response);
+            psrs(frame, 2) = PSR(fDSST_response);
+            psrs(frame, 3) = PSR(response);
+            
+            max_responses(frame, 1) = max(CN_response(:));
+            max_responses(frame, 2) = max(fDSST_response(:));
+            max_responses(frame, 3) = max(response(:));
+
             % 更新目标位置
 %             [row, col] = find(CN_response == max(CN_response(:)), 1);
             [row, col] = find(response == max(response(:)), 1);
@@ -361,4 +380,33 @@ function results = tracker(params)
     results.positions = positions;
     results.boxes = boxes;
     results.fps = fps;
+
+    if draw_apce
+        figure()
+        subplot(3,1,1)
+        plot((1:num_frames), apces(:,1))
+        subplot(3,1,2)
+        plot((1:num_frames), apces(:,2))
+        subplot(3,1,3)
+        plot((1:num_frames), apces(:,3))
+        title("apce")
+    
+        figure()
+        subplot(3,1,1)
+        plot((1:num_frames), psrs(:,1))
+        subplot(3,1,2)
+        plot((1:num_frames), psrs(:,2))
+        subplot(3,1,3)
+        plot((1:num_frames), psrs(:,3))
+        title("psr")
+    
+        figure()
+        subplot(3,1,1)
+        plot((1:num_frames), max_responses(:,1))
+        subplot(3,1,2)
+        plot((1:num_frames), max_responses(:,2))
+        subplot(3,1,3)
+        plot((1:num_frames), max_responses(:,3))
+        title("max_response")
+    end
 end
