@@ -166,15 +166,15 @@ function results = tracker(params)
             
             apces(frame, 1) = APCE(CN_response);
             apces(frame, 2) = APCE(fDSST_response);
-
-            Fusion_factor = apces(frame, 1) / (apces(frame, 1) + apces(frame, 2));
+%             Fusion_factor = apces(frame, 1) / (apces(frame, 1) + apces(frame, 2));
+            psrs(frame, 1) = PSR(CN_response);
+            psrs(frame, 2) = PSR(fDSST_response);
+%             Fusion_factor = psrs(frame, 1) / (psrs(frame, 1) + psrs(frame, 2));
+            Fusion_factor = 0.3;
             response = Fusion_factor* CN_response + (1-Fusion_factor) * fDSST_response;
             
             
             apces(frame, 3) = APCE(response);
-
-            psrs(frame, 1) = PSR(CN_response);
-            psrs(frame, 2) = PSR(fDSST_response);
             psrs(frame, 3) = PSR(response);
             
             max_responses(frame, 1) = max(CN_response(:));
